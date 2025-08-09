@@ -1,90 +1,55 @@
 import os
 import base64
-import getpass
+from tkinter import ttk
+import notes_gui
 
 PASSWORD = "haslo123"
+NOTES_DIR = "notes"
+EXT = ".txt"
 
-def get_note_filename(note_name):
-    return f"note_{note_name}.txt"
+def ensure_dir():
+    os.makedirs(NOTES_DIR, exist_ok=True)
 
-def save_note(note_name):
-    note = input("Wpisz treść notatki : ")
-    encoded_note = base64.b64encode(note.encode()).decode()
-    with open(get_note_filename(note_name),'w') as f:
-        f.write(encoded_note)
-    print("Notatka zapisana i zakodowana.")
+def note_path(name: str) -> str:
+    return os.path.join(NOTES_DIR, f"note_{name}{EXT}")
 
-def read_note(note_name):
-    password = input("Podaj haslo: ")
-    fname = get_note_filename(note_name)
-    if not os.path.exists(fname):
-        print("Brak takiej notatki!")
-        return
-    with open(fname,'r') as f:
+def list_notes() -> list[str]:
+    ensure_dir()
+    notes = []
+    for f in os.listdir(NOTES_DIR):
+        if f.startswith("note_") and f.endswith(EXT):
+            notes.append(f[5:-len(EXT)])
+    notes.sort()
+    return notes
+
+def save_note(name: str, text: str):
+    ensure_dir()
+    encoded = base64.b64encode(text.encode()).decode()
+    with open(note_path(name), "w", encoding="utf-8") as f:
+        f.write(encoded)
+
+def load_note(name: str) -> str:
+    with open(note_path(name), "r", encoding="utf-8") as f:
         content = f.read()
-    if password == PASSWORD:
-        try:
-            note = base64.b64decode(content.encode()).decode()
-            print(f"Twoja notatka '{note_name}': {note}")
-        except Exception:
-            print("Blad przy odczycie notatki")
-    else:
-        print("YOU ARE NOT MY MASTER")
-        print(''.join([chr(ord(c)^42) for c in content]))
+    try:
+        return base64.b64decode(content.encode()).decode()
+    except Exception:
+        return ""
 
-def edit_note(note_name):
-    password = getpass.getpass("Podaj haslo, by edytować: ")
-    fname = get_note_filename(note_name)
-    if not os.path.exists(fname):
-        print("Brak takiej notatki! Dodaj ją najpierw.")
-        return
-    if password == PASSWORD:
-        old_note = ""
-        with open(fname,'r') as f:
-            content = f.read()
-        try:
-            old_note = base64.b64decode(content.encode()).decode()
-        except Exception:
-            old_note = ""
-        print("Obecna notatka: ", old_note)
-        save_note(note_name)
-    else:
-        print("NIEPRAWIDŁOWE HASŁO! NIE MOŻESZ MNIE EDYTOWAĆ!")
-
-def notes_list():
-    files = [f for f in os.listdir() if f.startswith("note_") and f.endswith(".txt")]
-    note_names = [f[5:-4] for f in files]
-    if note_names:
-        print("Dostępne notatki : ", ", ".join(note_names))
-    else:
-        print("Brak notatek.")
+def delete_note(name: str):
+    p = note_path(name)
+    if os.path.exists(p):
+        os.remove(p)
     
-
 def main():
-    while True:
-        print("\n---MENU---")
-        print("1. Dodaj nową notatkę")
-        print("2. Odczytaj notatkę")
-        print("3. Edytuj notatkę")
-        print("4. Pokaż listę notatek")
-        print("5. Zakończ")
-        choice = input("Wybierz opcję : ")
-        match int(choice):
-            case 1:
-                note_name = input("Podaj nazwę notatki : ")
-                save_note(note_name)
-            case 2:
-                note_name = input("Podaj nazwę notatki do odczytu: ")
-                read_note(note_name)
-            case 3:
-                note_name  = input("Podaj nazwę notatki do edycji : ")
-                edit_note(note_name)
-            case 4:
-                notes_list()
-            case 5:
-                print("Do następnego")
-                break
+    ensure_dir()
+    root = notes_gui.tk.Tk()
+    try:
+        ttk.Style().theme_use("clam")
+    except notes_gui.tk.TclError:
+        pass
+    notes_gui.MainApp(root)
+    root.mainloop()
 
 if __name__ == "__main__":
     main()
-
